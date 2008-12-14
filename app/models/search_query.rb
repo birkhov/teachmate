@@ -105,10 +105,26 @@ class SearchQuery < ActiveRecord::Base
     end
     find_learners(location_query_part, placeholders, teach_taggings_condition) unless @learn_tags.empty?
 
-    @tags = Tag.find(:all, :include => [:teach_taggings, :learn_taggings],
-            :conditions => ["teach_taggings.user_id in (:users) OR 
-            learn_taggings.user_id in (:users)", 
-            {:users => @users}])
+    users_ids = @users.map {|u| u.id}
+    teach_taggings = ActiveRecord::Base.connection.execute(
+      "SELECT tag_id FROM teach_taggings
+      WHERE user_id in (#{users_ids.join(',')})"    
+    ).map {|tagging| tagging["tag_id"]}
+    learn_taggings = ActiveRecord::Base.connection.execute(
+      "SELECT tag_id FROM learn_taggings
+      WHERE user_id in (#{users_ids.join(',')})"    
+    ).map {|tagging| tagging["tag_id"]}
+
+    taggings = (teach_taggings+learn_taggings).uniq
+
+    @tags = Tag.find(:all, :conditions => ["id in (:taggings)", {:taggings => taggings}])
+    
+    # Old way, slow query with 2 joins
+    #
+    # @tags = Tag.find(:all, :include => [:teach_taggings, :learn_taggings],
+    #        :conditions => ["teach_taggings.user_id in (:users) OR 
+    #        learn_taggings.user_id in (:users)", 
+    #        {:users => @users}])
 
 	end
 
