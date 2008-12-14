@@ -106,14 +106,14 @@ class SearchQuery < ActiveRecord::Base
     find_learners(location_query_part, placeholders, teach_taggings_condition) unless @learn_tags.empty?
 
     users_ids = @users.map {|u| u.id}
-    teach_taggings = ActiveRecord::Base.connection.execute(
+    teach_taggings = TeachTagging.find_by_sql(
       "SELECT tag_id FROM teach_taggings
       WHERE user_id in (#{users_ids.join(',')})"    
-    ).map {|tagging| tagging["tag_id"]}
-    learn_taggings = ActiveRecord::Base.connection.execute(
+    ).map {|tagging| tagging.tag_id}
+    learn_taggings = LearnTagging.find_by_sql(
       "SELECT tag_id FROM learn_taggings
       WHERE user_id in (#{users_ids.join(',')})"    
-    ).map {|tagging| tagging["tag_id"]}
+    ).map {|tagging| tagging.tag_id}
 
     taggings = (teach_taggings+learn_taggings).uniq
 
