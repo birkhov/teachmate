@@ -97,6 +97,7 @@ class SearchQuery < ActiveRecord::Base
 
     # Here's where all SEARCH happens
     find_all(location_query_part, placeholders) if @learn.empty? and @teach.empty? #shows all users
+
     unless @teach_tags.empty?
       if learn_query_parts = find_teachers(location_query_part, placeholders)
         location_query_part       = learn_query_parts[:location_query_part]
@@ -104,6 +105,8 @@ class SearchQuery < ActiveRecord::Base
       end
     end
     find_learners(location_query_part, placeholders, teach_taggings_condition) unless @learn_tags.empty?
+
+    return if @users.blank? # Just exit if no users found
 
     user_ids = @users.map{ |u| u.id.to_s }.join(',')
     results = ActiveRecord::Base.connection.execute("
@@ -113,7 +116,7 @@ class SearchQuery < ActiveRecord::Base
 
     taggings = []
     if RAILS_ENV == 'production'
-       
+      # No need remap results when using MySQL 
     else
       results.each { |i| taggings << i['teach_tag_id']; taggings << i['learn_tag_id'] }
     end
