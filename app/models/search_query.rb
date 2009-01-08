@@ -112,7 +112,12 @@ class SearchQuery < ActiveRecord::Base
       WHERE teach_taggings.user_id in (#{user_ids}) OR learn_taggings.user_id in (#{user_ids})")
 
     taggings = []
-    results.each { |i| taggings << i['teach_tag_id']; taggings << i['learn_tag_id'] }
+    if RAILS_ENV == 'production'
+       
+    else
+      results.each { |i| taggings << i['teach_tag_id']; taggings << i['learn_tag_id'] }
+    end
+
     taggings.uniq!
 
     @tags = Tag.find(:all, :conditions => ["id in (:taggings)", {:taggings => taggings}])
