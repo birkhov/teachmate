@@ -109,19 +109,24 @@ class SearchQuery < ActiveRecord::Base
     return if @users.blank? # Just exit if no users found
 
     user_ids = @users.map{ |u| u.id.to_s }.join(',')
-    results = ActiveRecord::Base.connection.execute("
-      SELECT teach_taggings.tag_id teach_tag_id, learn_taggings.tag_id learn_tag_id
-      FROM teach_taggings, learn_taggings
-      WHERE teach_taggings.user_id in (#{user_ids}) OR learn_taggings.user_id in (#{user_ids})")
+    users_ids = @users.map {|u| u.id}
+    teach_taggings = TeachTagging.find_by_sql(
+      "SELECT tag_id FROM teach_taggings
+      WHERE user_id in (#{users_ids.join(',')})"    
+    ).map {|tagging| tagging.tag_id}
+    learn_taggings = LearnTagging.find_by_sql(
+      "SELECT tag_id FROM learn_taggings
+      WHERE user_id in (#{users_ids.join(',')})"    
+    ).map {|tagging| tagging.tag_id}
 
-    taggings = []
-    if RAILS_ENV == 'production'
-      # No need remap results when using MySQL 
-    else
-      results.each { |i| taggings << i['teach_tag_id']; taggings << i['learn_tag_id'] }
-    end
+    taggings = (teach_taggings+learn_taggings).uniq
 
-    taggings.uniq!
+#     taggings = []
+#     if RAILS_ENV == 'production'
+#       No need remap results when using MySQL 
+#     else
+#       results.each { |i| taggings << i['teach_tag_id']; taggings << i['learn_tag_id'] }
+#     end
 
     @tags = Tag.find(:all, :conditions => ["id in (:taggings)", {:taggings => taggings}])
     
